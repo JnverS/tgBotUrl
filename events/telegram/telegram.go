@@ -1,10 +1,11 @@
 package telegram
 
 import (
-	"bot/clients/telegram"
-	"bot/events"
-	"bot/lib/e"
-	"bot/storage"
+	"UrlBot/clients/telegram"
+	"UrlBot/events"
+	"UrlBot/lib/e"
+	"UrlBot/storage"
+	"errors"
 )
 
 type Processor struct {
@@ -47,21 +48,23 @@ func (p *Processor) Fetch(limit int) ([]events.Event, error) {
 }
 
 func (p *Processor) Process(event events.Event) error {
-	switch {
+	switch event.Type {
 	case events.Message:
-		p.processMessage(event)
+		return p.processMessage(event)
 	default:
 		return e.Wrap("can't process message", errors.New("unknown event type"))
 	}
 }
 
-func (p *Processor) processMessage(event events.Event) error{
+func (p *Processor) processMessage(event events.Event) error {
 	meta, err := meta(event)
 	if err != nil {
 		return e.Wrap("can't process message", err)
 	}
-
-	
+	if err := p.doCmd(event.Text, meta.ChatID, meta.Username); err != nil {
+		return e.Wrap("can't process message", err)
+	}
+	return nil
 }
 
 func meta(event events.Event) (Meta, error) {
@@ -90,13 +93,13 @@ func event(upd telegram.Update) events.Event {
 	return res
 }
 
-func fetchType(upd telegram.Update) event.Type {
+func fetchText(upd telegram.Update) string {
 	if upd.Message == nil {
 		return ""
 	}
 	return upd.Message.Text
 }
-func fetchText(upd telegram.Update) event.Text {
+func fetchType(upd telegram.Update) events.Type {
 	if upd.Message == nil {
 		return events.Unknown
 	}

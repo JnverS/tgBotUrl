@@ -1,21 +1,27 @@
 package main
 
 import (
+	event_consumer "UrlBot/comsumer/event-consumer"
+	"UrlBot/events/telegram"
+	"UrlBot/storage/files"
 	"flag"
-	"fmt"
 	"log"
 
-	"bot/clients/telegram"
+	tgClient "UrlBot/clients/telegram"
 )
 
 func main() {
-	tgClient := telegram.New("api.telegram.org", mustToken())
-	fmt.Println(tgClient)
-	//token = flags.Get(token)
-	//tgClient = telegram.New(token)
-	//fetcher = fetcher.New(tgClient)
-	//processor = processor.New(tgClient)
-	// consumer.Start(fetcher, processor)
+	eventsProcessor := telegram.New(
+		tgClient.New("api.telegram.org", mustToken()),
+		files.New("files_storage"),
+	)
+
+	log.Print("service started")
+
+	consumer := event_consumer.New(eventsProcessor, eventsProcessor, 100)
+	if err := consumer.Start(); err != nil {
+		log.Fatal("service is stopped", err)
+	}
 }
 
 func mustToken() string {

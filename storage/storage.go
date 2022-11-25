@@ -1,21 +1,24 @@
 package storage
 
 import (
+	"UrlBot/lib/e"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
-	"bot/lib/e"
 )
 
-type Storage interface{
+type Storage interface {
 	Save(p *Page) error
 	PickRandom(userName string) (*Page, error)
 	Remove(p *Page) error
-	InExists(p *Page) (bool, error)
+	IsExists(p *Page) (bool, error)
 }
 
+var ErrNoSavedPages = errors.New("no saved pages")
+
 type Page struct {
-	URL string
+	URL      string
 	UserName string
 }
 

@@ -1,8 +1,8 @@
 package files
 
 import (
-	"bot/lib/e"
-	"bot/storage"
+	"UrlBot/lib/e"
+	"UrlBot/storage"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -21,10 +21,10 @@ func New(basePath string) Storage {
 }
 
 func (s Storage) Save(page *storage.Page) (err error) {
-	defer func() {err = e.Wrap("can't save page", err) }()
+	defer func() { err = e.Wrap("can't save page", err) }()
 
 	filePath := filepath.Join(s.basePath, page.UserName)
-	if err := os.MkdirAll(filePath, 0774); err!= nil {
+	if err := os.MkdirAll(filePath, 0774); err != nil {
 		return err
 	}
 	fileName, err := fileName(page)
@@ -36,7 +36,7 @@ func (s Storage) Save(page *storage.Page) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { _=file.Close()}()
+	defer func() { _ = file.Close() }()
 
 	if err := gob.NewEncoder(file).Encode(page); err != nil {
 		return err
@@ -45,25 +45,28 @@ func (s Storage) Save(page *storage.Page) (err error) {
 }
 
 func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
-	defer func() {err = e.Wrap("can't pick random", err) }()
+	defer func() { err = e.Wrap("can't pick random", err) }()
 	path := filepath.Join(s.basePath, userName)
 
-	files, err := os.ReadDir(path)
-	if err!= nil {
-		return nil, err
-	}
-	if len(files) == 0 {
-		return nil, errors.New("not saved page")
-	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		files, err := os.ReadDir(path)
+		if err != nil {
+			return nil, err
+		}
+		if len(files) == 0 {
+			return nil, storage.ErrNoSavedPages
+		}
 
-	rand.Seed(time.Now().UnixNano())
-	n := rand.Intn(len(files))
-	file := files[n]
+		rand.Seed(time.Now().UnixNano())
+		n := rand.Intn(len(files))
+		file := files[n]
 
-	return s.decodePage(filepath.Join(path, file.Name()))
+		return s.decodePage(filepath.Join(path, file.Name()))
+	}
+	return nil, storage.ErrNoSavedPages
 }
 
-func (s Storage) Remove(p *storage.Page) (error) {
+func (s Storage) Remove(p *storage.Page) error {
 	fileName, err := fileName(p)
 	if err != nil {
 		return e.Wrap("can't remove file", err)
@@ -77,7 +80,7 @@ func (s Storage) Remove(p *storage.Page) (error) {
 	return nil
 }
 
-func (s Storage) IsExists(p *storage.Page) (bool, error){
+func (s Storage) IsExists(p *storage.Page) (bool, error) {
 	fileName, err := fileName(p)
 	if err != nil {
 		return false, e.Wrap("can't check if file exists", err)
@@ -93,18 +96,18 @@ func (s Storage) IsExists(p *storage.Page) (bool, error){
 	return true, nil
 }
 
-func (s Storage) decodePage(filePath string)(*storage.Page, error){
+func (s Storage) decodePage(filePath string) (*storage.Page, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, e.Wrap("can't open file", err)
 	}
-	defer func() {_=f.Close()}()
+	defer func() { _ = f.Close() }()
 
 	var p storage.Page
 	if err := gob.NewDecoder(f).Decode(&p); err != nil {
 		return nil, e.Wrap("can't decode page", err)
 	}
-	
+
 	return &p, nil
 }
 
